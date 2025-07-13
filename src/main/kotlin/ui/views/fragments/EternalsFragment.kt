@@ -26,6 +26,7 @@ class EternalsFragment : Fragment() {
         val vBox = vbox {
             newEternal.filter { it.setName != "Starter Series" }
                 .sortedByDescending { it.formattedMilestoneLevel }
+                .filter { it.formattedMilestoneLevel.toInt() < 5 }
                 .forEach {
                     val regex = StringUtil.getSafeRegex(ETERNALS_DESCRIPTION_REGEX, it.description)
 

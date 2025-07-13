@@ -44,7 +44,7 @@ data class ChampionInfo(val id: Int = -1, val name: String = "None", val ownersh
                 val sortMap = mapOf("K" to 1, "T" to 2, "M" to 3)
 
                 val joinedStarterSeries = starterEternals?.map { stone -> Pair(stone, nameMap[stone.name]) }
-                    ?.sortedByDescending { sortMap[it.second] }
+                    ?.sortedBy { sortMap[it.second] }
                 latestEternalInfo.add(EternalsInfo().apply {
                     name = joinedStarterSeries?.joinToString(", ") {
                         "${it.second}${it.first.formattedMilestoneLevel}"
@@ -60,7 +60,7 @@ data class ChampionInfo(val id: Int = -1, val name: String = "None", val ownersh
                 return emptyList()
             }
 
-            return latestEternalInfo.filter { it.formattedMilestoneLevel.toInt() < 5 }
+            return latestEternalInfo
         } else {
             emptyList()
         }
