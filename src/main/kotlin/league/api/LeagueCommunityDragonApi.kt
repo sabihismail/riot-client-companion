@@ -109,7 +109,7 @@ object LeagueCommunityDragonApi {
             val urlStr = CacheUtil.getEndpoint(cacheType)?.format(*params)
 
             val connection = URL(urlStr).openConnection()
-            connection.setRequestProperty("User-Agent", "LoL-Mastery-Box-Client")
+            connection.setRequestProperty("User-Agent", "RiotClientCompanion")
 
             try {
                 val readableByteChannel = Channels.newChannel(connection.getInputStream())
@@ -246,7 +246,7 @@ object LeagueCommunityDragonApi {
 
     private fun sendRequest(url: String): String {
         val connection = URL(url).openConnection()
-        connection.setRequestProperty("User-Agent", "LoL-Mastery-Box-Client")
+        connection.setRequestProperty("User-Agent", "RiotClientCompanion")
 
         return connection.getInputStream().bufferedReader().use { it.readText() }
     }

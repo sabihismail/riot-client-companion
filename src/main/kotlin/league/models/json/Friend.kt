@@ -62,6 +62,14 @@ class Friend {
     var summonerId: Long? = null
     // var time: Long? = null
     var ownerFriend = ""
+
+    // Populated by RiotClientPoller for Valorant presence
+    @com.google.gson.annotations.Expose(serialize = false, deserialize = false)
+    var gameState: String? = null
+
+    // True when loaded from cache, not live
+    @com.google.gson.annotations.Expose(serialize = false, deserialize = false)
+    var isCached: Boolean = false
 }
 
 val lolChatFriendResourceImplPropertyMap by lazy {

@@ -12,6 +12,7 @@ class Settings {
     var mainId = 0L
     var disenchantIds = ""
     var developerIds = ""
+    var debugMode = false
 
     companion object {
         val INSTANCE: Settings by lazy {

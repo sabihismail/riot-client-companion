@@ -9,12 +9,12 @@ object Logging {
     private const val ANSI_WARNING_YELLOW = "\u001B[93m"
     private val ANSI_SET = setOf(ANSI_ERROR_RED, ANSI_WARNING_YELLOW)
 
-    private val LOG_MODE = LogType.INFO
+    var logMode = LogType.INFO
 
     private val logged = hashSetOf<String>()
 
     fun log(obj: Any, logType: LogType, header: String? = null, ignorableDuplicate: Boolean = false) {
-        if (logType < LOG_MODE) return
+        if (logType < logMode) return
 
         val s = ReflectionToStringBuilder.reflectionToString(obj, RecursiveToStringStyle())
 
@@ -27,7 +27,7 @@ object Logging {
     }
 
     fun log(str: String, logType: LogType, header: String? = null, ignorableDuplicate: Boolean = false, carriageReturn: Int = -1, messageType: LogMessageType? = null) {
-        if (logType < LOG_MODE) return
+        if (logType < logMode) return
         val s = StringBuilder()
         if (logType == LogType.WARNING) {
             if (logged.contains(str)) return

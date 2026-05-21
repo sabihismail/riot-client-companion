@@ -1,85 +1,124 @@
 package ui.views
 
-import generated.LolSummonerSummoner
+import javafx.beans.property.ReadOnlyObjectWrapper
 import javafx.beans.property.SimpleBooleanProperty
-import javafx.beans.property.SimpleListProperty
+import javafx.beans.property.SimpleObjectProperty
 import javafx.beans.property.SimpleStringProperty
 import javafx.collections.FXCollections
+import javafx.collections.transformation.FilteredList
+import javafx.collections.transformation.SortedList
 import javafx.geometry.Pos
-import league.models.json.LolAvailability
-import league.models.json.Friend
-import league.models.json.lolChatFriendResourceImplPropertyMap
-import org.apache.hc.core5.http.HttpHeaders
-import org.apache.hc.core5.http.message.BasicHeader
+import javafx.scene.control.TableView
+import riot.RiotFriendsManager
+import riot.models.RiotFriend
 import tornadofx.*
-import util.HttpUtil
-import util.ProcessUtil
-import java.util.*
 
+enum class FriendSort { BY_ACCOUNT, BY_NAME, BY_FAVOURITES }
 
-class FriendsView : View("Friend List") {
-    private val friends = SimpleListProperty<Friend>()
-    private val searchProperty = SimpleStringProperty(this, SEARCH_FILTER, config.string(SEARCH_FILTER) ?: "")
-    private val isOnlineProperty = SimpleBooleanProperty(this, IS_ONLINE, config.boolean(IS_ONLINE) ?: true)
-    private val isHideMobileProperty = SimpleBooleanProperty(this, IS_HIDE_MOBILE, config.boolean(IS_HIDE_MOBILE) ?: true)
+class FriendsView : View("Friends") {
 
-    private val userIdMapping = hashMapOf<String, String>()
-    private val friendsLst = HashMap<String, Array<Friend>>()
+    private val sortMode = SimpleObjectProperty(FriendSort.BY_ACCOUNT)
+    private val onlineOnly = SimpleBooleanProperty(false)
+    private val search = SimpleStringProperty("")
 
-    private val booleanFilterMapping = listOf<Pair<SimpleBooleanProperty, (Friend) -> Boolean>>(
-        Pair(isOnlineProperty) { it.availability != LolAvailability.OFFLINE },
-        Pair(isHideMobileProperty) { it.availability != LolAvailability.MOBILE },
-    )
+    private val source = FXCollections.observableArrayList<RiotFriend>()
+    private val filtered = FilteredList(source)
+    private val sorted = SortedList(filtered)
 
     override val root = borderpane {
-        prefWidth = MainView.APP_WIDTH
-        prefHeight = MainView.APP_HEIGHT
+        prefWidth = 740.0
+        prefHeight = 600.0
 
-        center = tableview(friends) {
-            column("Account", Friend::ownerFriend) { minWidth = 50.0 }
-            column("Friend Name", Friend::gameName) { minWidth = 150.0 }
-            column("Note", Friend::note) { minWidth = 300.0 }
-            column("Game") {
-                minWidth = 150.0
+        top = vbox(spacing = 6.0) {
+            paddingAll = 10.0
 
-                if (it.value.availability == LolAvailability.MOBILE) {
-                    "mobile".toProperty()
-                } else if (it.value.product != null) {
-                    it.value.product.toString().toProperty()
-                } else {
-                    "".toProperty()
+            hbox(spacing = 8.0) {
+                alignment = Pos.CENTER_LEFT
+                label("Sort:")
+                val tg = togglegroup()
+                radiobutton("By Account", tg) {
+                    isSelected = true
+                    action { sortMode.set(FriendSort.BY_ACCOUNT); refreshSort() }
+                }
+                radiobutton("By Name", tg) {
+                    action { sortMode.set(FriendSort.BY_NAME); refreshSort() }
+                }
+                radiobutton("Favourites First", tg) {
+                    action { sortMode.set(FriendSort.BY_FAVOURITES); refreshSort() }
+                }
+            }
+
+            hbox(spacing = 12.0) {
+                alignment = Pos.CENTER_LEFT
+                checkbox("Online only", onlineOnly) { action { applyFilter() } }
+                label("Search:")
+                textfield(search) {
+                    prefWidth = 180.0
+                    textProperty().addListener { _, _, _ -> applyFilter() }
+                }
+                spacer()
+                label("") {
+                    style = "-fx-text-fill: grey; -fx-font-size: 11;"
+                    RiotFriendsManager.addChangeListener {
+                        runLater { text = RiotFriendsManager.activeAccount ?: "Not connected" }
+                    }
                 }
             }
         }
 
-        bottom = hbox {
-            paddingBottom = 12.0
-            paddingLeft = 12.0
+        center = tableview(sorted) {
+            columnResizePolicy = TableView.CONSTRAINED_RESIZE_POLICY
+
+            // Star / favourite column — value = full RiotFriend so cellFormat can read puuid
+            column<RiotFriend, RiotFriend>("★") { ReadOnlyObjectWrapper(it.value) }.apply {
+                maxWidth = 36.0; minWidth = 36.0
+                cellFormat { friend ->
+                    text = if (friend.isFavourite) "★" else "☆"
+                    style = if (friend.isFavourite) "-fx-text-fill: gold; -fx-font-size: 14;" else "-fx-text-fill: grey; -fx-font-size: 14;"
+                    setOnMouseClicked { RiotFriendsManager.toggleFavourite(friend.puuid) }
+                }
+            }
+
+            column<RiotFriend, String>("Name") { SimpleStringProperty(it.value.displayName) }.apply {
+                minWidth = 170.0
+            }
+
+            column<RiotFriend, String>("Status") { SimpleStringProperty(it.value.statusLabel) }.apply {
+                minWidth = 160.0
+                cellFormat { label ->
+                    text = label
+                    style = when {
+                        label.startsWith("In Game") -> "-fx-text-fill: #4fc3f7;"
+                        label == "Pre-Game" -> "-fx-text-fill: #ffb74d;"
+                        label == "Offline" -> "-fx-text-fill: #888888;"
+                        else -> ""
+                    }
+                }
+            }
+
+            column<RiotFriend, String>("Mode") {
+                SimpleStringProperty(it.value.gameMode?.replaceFirstChar { c -> c.uppercase() } ?: "")
+            }.apply { minWidth = 100.0 }
+
+            column<RiotFriend, String>("Account") { SimpleStringProperty(it.value.ownerAccount) }.apply {
+                minWidth = 130.0
+                cellFormat { acct ->
+                    text = acct
+                    style = if (acct == RiotFriendsManager.activeAccount) "" else "-fx-text-fill: #aaaaaa;"
+                }
+            }
+        }
+
+        bottom = hbox(spacing = 8.0) {
+            paddingAll = 8.0
             alignment = Pos.CENTER_LEFT
-
-            hbox {
-                alignment = Pos.CENTER_LEFT
-                spacing = 10.0
-
-                label("Filter: ")
-                textfield(searchProperty) {
-                    textProperty().addListener { _, _, new ->
-                        config[SEARCH_FILTER] = new
-                        refresh()
-                    }
-                }
-
-                checkbox("Is Online", isOnlineProperty).apply {
-                    isOnlineProperty.onChange {
-                        config[IS_ONLINE] = it.toString()
-                        refresh()
-                    }
-                }
-
-                checkbox("Is Hide Mobile", isHideMobileProperty).apply {
-                    isHideMobileProperty.onChange {
-                        config[IS_HIDE_MOBILE] = it.toString()
-                        refresh()
+            label("") {
+                RiotFriendsManager.addChangeListener {
+                    runLater {
+                        val online = RiotFriendsManager.onlineFriends().size
+                        val total = RiotFriendsManager.allFriendsFlat().size
+                        val accounts = RiotFriendsManager.allFriends.size
+                        text = "$online online / $total total  ·  $accounts account${if (accounts != 1) "s" else ""}"
                     }
                 }
             }
@@ -87,80 +126,36 @@ class FriendsView : View("Friend List") {
     }
 
     init {
-        timer.scheduleAtFixedRate(object: TimerTask() {
-            override fun run() {
-                val output = ProcessUtil.runCommand("wmic PROCESS WHERE name='LeagueClientUx.exe' GET commandline")
-
-                val portRegex = ".*--app-port=([0-9]*).*".toRegex()
-                val tokenRegex = ".*--remoting-auth-token=([a-zA-Z0-9-_]+).*".toRegex()
-                for (line in output.split("\n")) {
-                    if (!line.contains("--app-port=") || !line.contains("--remoting-auth-token=")) continue
-
-                    val port = portRegex.find(line)?.groups?.get(1)?.value
-                    val password = tokenRegex.find(line)?.groups?.get(1)?.value
-
-                    if (port.isNullOrBlank() || password.isNullOrBlank()) {
-                        println("[FriendsView] Cmd Failed parsing: $line")
-                        continue
-                    }
-
-                    val token = String(Base64.getEncoder().encode("riot:$password".toByteArray()))
-
-                    val baseUrl = "https://127.0.0.1:${port}"
-                    val headers = listOf(BasicHeader(HttpHeaders.AUTHORIZATION, "Basic $token"), BasicHeader(HttpHeaders.ACCEPT, "*/*"))
-
-                    if (!userIdMapping.containsKey(port)) {
-                        val summoner = HttpUtil.makeGetRequestJson<LolSummonerSummoner>("$baseUrl/lol-summoner/v1/current-summoner", headers = headers)
-
-                        if (summoner != null) {
-                            userIdMapping[port] = summoner.displayName
-                        }
-                    }
-
-                    val friendResponse = HttpUtil.makeGetRequestJson<Array<Friend>>("$baseUrl/lol-chat/v1/friends", headers = headers)
-                    handleFriendArray(userIdMapping[port], friendResponse)
-                }
-            }
-        }, 0, 60 * 1000)
+        RiotFriendsManager.addChangeListener { runLater { reload() } }
+        RiotFriendsManager.start()
+        reload()
     }
 
-    private fun handleFriendArray(userName: String?, response: Array<Friend>?) {
-        if (response == null || userName.isNullOrBlank()) return
-
-        response.onEach { it.ownerFriend = userName }
-        friendsLst[userName] = response
-
-        refresh()
+    private fun reload() {
+        source.setAll(RiotFriendsManager.allFriendsFlat())
+        applyFilter()
+        refreshSort()
     }
 
-    private fun refresh() {
-        runAsync {
-            var lst = friendsLst.flatMap { it.value.toList() }
-
-            val booleanFilters = booleanFilterMapping.filter { map -> map.first.get() }.map { it.second }
-            booleanFilters.forEach { lst = lst.filter(it) }
-
-            val tagStr = searchProperty.value.toString().lowercase()
-            if (tagStr.isNotBlank()) {
-                lst = lst.filter { x -> lolChatFriendResourceImplPropertyMap.any { it.getter.call(x).toString().lowercase().contains(tagStr) } }
-            }
-
-            lst
-        } ui { lst ->
-            friends.value = FXCollections.observableList(lst)
+    private fun applyFilter() {
+        val q = search.value.trim().lowercase()
+        val oo = onlineOnly.value
+        filtered.setPredicate { f ->
+            if (oo && !f.online) return@setPredicate false
+            if (q.isEmpty()) return@setPredicate true
+            f.displayName.lowercase().contains(q) ||
+                f.ownerAccount.lowercase().contains(q) ||
+                (f.gameMode?.lowercase()?.contains(q) == true)
         }
     }
 
-    fun onClose() {
-        config.save()
+    private fun refreshSort() {
+        sorted.comparator = when (sortMode.value!!) {
+            FriendSort.BY_ACCOUNT -> compareBy({ it.ownerAccount }, { !it.online }, { it.displayName.lowercase() })
+            FriendSort.BY_NAME -> compareBy({ !it.online }, { it.displayName.lowercase() })
+            FriendSort.BY_FAVOURITES -> compareBy({ !it.isFavourite }, { !it.online }, { it.displayName.lowercase() })
+        }
     }
 
-    companion object {
-        val timer = Timer()
-
-        const val SEARCH_FILTER = "tag"
-        const val IS_ONLINE = "is_online"
-        const val IS_HIDE_MOBILE = "is_hide_mobile"
-    }
+    fun onClose() { /* manager runs in background */ }
 }
-

@@ -1,11 +1,11 @@
 <component name="ArtifactManager">
-  <artifact type="jar" name="LoL-Mastery-Box-Client.main:jar">
-    <output-path>$PROJECT_DIR$/out/artifacts/LoL_Mastery_Box_Client_main_jar</output-path>
-    <root id="archive" name="LoL-Mastery-Box-Client.main.jar">
+  <artifact type="jar" name="RiotClientCompanion.main:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/RiotClientCompanion_main_jar</output-path>
+    <root id="archive" name="RiotClientCompanion.main.jar">
       <element id="directory" name="META-INF">
         <element id="file-copy" path="$PROJECT_DIR$/src/main/kotlin/META-INF/MANIFEST.MF" />
       </element>
-      <element id="module-output" name="LoL-Mastery-Box-Client.main" />
+      <element id="module-output" name="RiotClientCompanion.main" />
     </root>
   </artifact>
 </component>

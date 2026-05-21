@@ -3,6 +3,9 @@ package db
 import db.models.ChallengeMappingTable
 import db.models.GenericKeyValueTable
 import db.models.MasteryChestTable
+import db.models.RiotAccountsTable
+import db.models.RiotFavouritesTable
+import db.models.RiotFriendsTable
 import league.LeagueConnection
 import league.models.MasteryChestInfo
 import league.models.SummonerInfo
@@ -26,6 +29,9 @@ object DatabaseImpl {
                 MasteryChestTable,
                 GenericKeyValueTable,
                 ChallengeMappingTable,
+                RiotFriendsTable,
+                RiotAccountsTable,
+                RiotFavouritesTable,
             )
         }
     }

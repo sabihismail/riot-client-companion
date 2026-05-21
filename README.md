@@ -9,7 +9,7 @@ A helper client that allows you to view a ton of extra stuff
 - Eternals information
 
 ### How to Use It
-- Download the [latest release](https://github.com/sabihismail/LoL-Mastery-Chest-Client/releases)
+- Download the [latest release](https://github.com/sabihismail/riot-client-companion/releases)
 and run the `.bat` file (make sure it stays in the same directory as the 
 `.jar` file)
 
@@ -32,7 +32,7 @@ and run the `.bat` file (make sure it stays in the same directory as the
 `shadow/shadowJar`
 
 If you would like another more utility functions, make an issue in the
-[issues](https://github.com/sabihismail/LoL-Mastery-Box-Client/issues) section.
+[issues](https://github.com/sabihismail/riot-client-companion/issues) section.
 
 ### Built With:
 - [LoL Client Java API](https://github.com/stirante/lol-client-java-api) - Handles 
